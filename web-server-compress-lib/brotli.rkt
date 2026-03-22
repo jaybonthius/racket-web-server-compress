@@ -3,21 +3,27 @@
 (require libbrotli
          racket/contract/base
          web-server/http
-         "private/accept-encoding.rkt")
+         "private/accept-encoding.rkt"
+         "private/compressible.rkt")
 
-(provide (contract-out [wrap-brotli-compress
-                        (->* [(-> request? response?)]
-                             [#:quality quality/c #:window window/c #:mode mode/c]
-                             (-> request? response?))]))
+(provide (contract-out
+          [wrap-brotli-compress
+           (->*
+            [(-> request? response?)]
+            [#:quality quality/c #:window window/c #:mode mode/c #:compress? (-> response? boolean?)]
+            (-> request? response?))]))
 
 (define (wrap-brotli-compress handler
                               #:quality [quality 5]
                               #:window [window 22]
-                              #:mode [mode BROTLI_MODE_TEXT])
+                              #:mode [mode BROTLI_MODE_TEXT]
+                              #:compress? [compress? #f])
+  (define effective-compress?
+    (or compress? (lambda (resp) (compressible-mime-type? (response-mime resp)))))
   (lambda (req)
     (define resp (handler req))
     (cond
-      [(accepts-encoding? req 'br)
+      [(and (accepts-encoding? req 'br) (effective-compress? resp))
        (define original-output (response-output resp))
        (struct-copy
         response

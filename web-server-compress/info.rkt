@@ -3,9 +3,9 @@
 
 (define collection 'multi)
 
-(define deps '("web-server-compress-lib"))
+(define deps '("web-server-compress-lib" "web-server-compress-doc"))
 
-(define implies '("web-server-compress-lib"))
+(define implies '("web-server-compress-lib" "web-server-compress-doc"))
 
 (define pkg-desc "HTTP response compression middleware for the Racket web server")
 

@@ -21,6 +21,6 @@ jobs:
           distribution: 'full'
           version: '9.1'
       - name: Install Packages and Dependencies
-        run: raco pkg install --auto --batch web-server-compress-lib/
+        run: raco pkg install --auto --batch web-server-compress/
       - name: Run Tests
-        run: raco test web-server-compress-lib/tests/
+        run: raco test web-server-compress/tests/

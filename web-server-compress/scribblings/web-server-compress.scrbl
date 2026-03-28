@@ -25,19 +25,27 @@ Brotli compression middleware for the Racket
                                             compressible-mime-type?])
          (-> request? response?)]{
 
-Returns a new handler that compresses responses with Brotli when the client
-sends @tt{Accept-Encoding: br} and the response is deemed compressible.
-Compressed responses include @tt{Content-Encoding: br} and
-@tt{Vary: Accept-Encoding} headers. When compression does not apply, the
-response passes through unchanged.
+Wraps @racket[handler] to compress responses with Brotli when the client
+sends @tt{Accept-Encoding: br} and the response is compressible. Compressed
+responses include @tt{Content-Encoding: br} and @tt{Vary: Accept-Encoding}
+headers.
 
 @racket[quality], @racket[window], and @racket[mode] control the Brotli
-encoder --- see @racketmodname[libbrotli] for details.
+encoder. See @racketmodname[libbrotli] for details.
 
-@racket[compress?] overrides the built-in predicate that decides whether a
-response should be compressed. The default compresses text types
-(@tt{text/*}) and common structured formats like @tt{application/json},
-@tt{application/xml}, @tt{image/svg+xml}, and others.
+@racket[compress?] decides whether a given response should be compressed. The
+default (@racket[compressible-mime-type?]) compresses text types
+(@tt{text/*}) and common structured formats:
+
+@itemlist[
+  @item{@tt{application/json}, @tt{application/javascript}, @tt{application/xml}, @tt{application/xhtml+xml}}
+  @item{@tt{application/wasm}, @tt{application/ld+json}, @tt{application/graphql+json}, @tt{application/geo+json}}
+  @item{@tt{application/manifest+json}, @tt{application/rss+xml}, @tt{application/atom+xml}}
+  @item{@tt{image/svg+xml}}
+]
+
+Responses with no @tt{Content-Type} header are also compressed. Already-compact
+formats like JPEG, PNG, and ZIP are not compressed.
 
 @codeblock|{
 (require web-server-compress
@@ -50,5 +58,14 @@ response should be compressed. The default compresses text types
 (serve
  #:dispatch (dispatch/servlet (wrap-brotli-compress app))
  #:port 8080)
+}|
+
+To override the default predicate, pass a custom @racket[compress?]:
+
+@codeblock|{
+;; Only compress JSON responses
+(wrap-brotli-compress app
+  #:compress? (lambda (resp)
+                (equal? (response-mime resp) #"application/json")))
 }|
 }

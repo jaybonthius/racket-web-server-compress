@@ -1,11 +1,15 @@
 #lang info
 #|review: ignore|#
 
-(define collection 'multi)
+(define collection "web-server-compress")
 
-(define deps '("web-server-compress-lib" "web-server-compress-doc"))
+(define version "0.1")
 
-(define implies '("web-server-compress-lib" "web-server-compress-doc"))
+(define deps '("base" "web-server-lib" "libbrotli"))
+
+(define build-deps '("rackunit-lib" "scribble-lib" "racket-doc" "web-server-doc"))
+
+(define scribblings '(("scribblings/web-server-compress.scrbl")))
 
 (define pkg-desc "HTTP response compression middleware for the Racket web server")
 

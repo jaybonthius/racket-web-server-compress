@@ -6,7 +6,9 @@
                      racket/base
                      racket/contract
                      web-server/http/request-structs
-                     web-server/http/response-structs))
+                     web-server/http/response-structs
+                     web-server/servlet-dispatch
+                     web-server/web-server))
 
 @title{Web Server Compress}
 
@@ -47,7 +49,7 @@ default (@racket[compressible-mime-type?]) compresses text types
 Responses with no @tt{Content-Type} header are also compressed. Already-compact
 formats like JPEG, PNG, and ZIP are not compressed.
 
-@codeblock|{
+@racketblock[
 (require web-server-compress
          web-server/servlet-dispatch
          web-server/web-server)
@@ -58,14 +60,14 @@ formats like JPEG, PNG, and ZIP are not compressed.
 (serve
  #:dispatch (dispatch/servlet (wrap-brotli-compress app))
  #:port 8080)
-}|
+]
 
 To override the default predicate, pass a custom @racket[compress?]:
 
-@codeblock|{
+@racketblock[
 ;; Only compress JSON responses
 (wrap-brotli-compress app
   #:compress? (lambda (resp)
                 (equal? (response-mime resp) #"application/json")))
-}|
+]
 }

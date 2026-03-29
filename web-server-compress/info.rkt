@@ -3,7 +3,7 @@
 
 (define collection "web-server-compress")
 
-(define version "0.2")
+(define version "0.3")
 
 (define deps '("base" "web-server-lib" "libbrotli" "libzstd"))
 

@@ -4,6 +4,7 @@
          rackunit
          web-server-compress/compress
          "support/helpers.rkt"
+         "support/gzip.rkt"
          "support/zstd.rkt")
 
 (module+ test
@@ -21,9 +22,9 @@
        (define resp (handler (make-req "br, gzip")))
        (check-equal? (response-header-value resp #"Content-Encoding") #"br"))
 
-     (test-case "no compression when client supports neither encoding"
-       (define handler (wrap-compress (make-text-handler "hello") #:encodings '(zstd br)))
-       (define resp (handler (make-req "gzip")))
+     (test-case "no compression when client supports no listed encoding"
+       (define handler (wrap-compress (make-text-handler "hello") #:encodings '(zstd br gzip)))
+       (define resp (handler (make-req "identity")))
        (check-false (response-header-value resp #"Content-Encoding")))
 
      (test-case "no compression when Accept-Encoding absent"
@@ -98,6 +99,46 @@
        (check-equal? (response-header-value resp #"Vary") #"Accept-Encoding"))
 
      (test-case "no Vary header on uncompressed response"
-       (define handler (wrap-compress (make-text-handler "hello") #:encodings '(zstd br)))
+       (define handler (wrap-compress (make-text-handler "hello") #:encodings '(zstd br gzip)))
+       (define resp (handler (make-req "identity")))
+       (check-false (response-header-value resp #"Vary")))
+
+     (test-case "falls back to gzip when client lacks zstd and br"
+       (define handler (wrap-compress (make-text-handler "hello") #:encodings '(zstd br gzip)))
        (define resp (handler (make-req "gzip")))
-       (check-false (response-header-value resp #"Vary"))))))
+       (check-equal? (response-header-value resp #"Content-Encoding") #"gzip"))
+
+     (test-case "selects gzip when only gzip in encodings list"
+       (define handler (wrap-compress (make-text-handler "hello") #:encodings '(gzip)))
+       (define resp (handler (make-req "gzip")))
+       (check-equal? (response-header-value resp #"Content-Encoding") #"gzip"))
+
+     (test-case "gzip round-trip through wrap-compress"
+       (define text "gzip round-trip via wrap-compress")
+       (define handler (wrap-compress (make-text-handler text) #:encodings '(gzip)))
+       (define resp (handler (make-req "gzip")))
+       (define decompressed (bytes->string/utf-8 (gzip-decompress (collect-response-body resp))))
+       (check-equal? decompressed text))
+
+     (test-case "custom #:gzip-level round-trips correctly"
+       (define text "hello with custom gzip level")
+       (define handler (wrap-compress (make-text-handler text) #:encodings '(gzip) #:gzip-level 9))
+       (define resp (handler (make-req "gzip")))
+       (define decompressed (bytes->string/utf-8 (gzip-decompress (collect-response-body resp))))
+       (check-equal? decompressed text))
+
+     (test-case "default three-encoding priority: zstd > br > gzip"
+       (define handler (wrap-compress (make-text-handler "hello")))
+       (define resp (handler (make-req "gzip, br, zstd")))
+       (check-equal? (response-header-value resp #"Content-Encoding") #"zstd"))
+
+     (test-case "Vary header present on gzip-compressed response"
+       (define handler (wrap-compress (make-text-handler "hello") #:encodings '(gzip)))
+       (define resp (handler (make-req "gzip")))
+       (check-equal? (response-header-value resp #"Vary") #"Accept-Encoding"))
+
+     (test-case "default parameters produce valid gzip output"
+       (define text "default gzip test")
+       (define handler (wrap-compress (make-text-handler text)))
+       (define resp (handler (make-req "gzip")))
+       (check-equal? (bytes->string/utf-8 (gzip-decompress (collect-response-body resp))) text)))))

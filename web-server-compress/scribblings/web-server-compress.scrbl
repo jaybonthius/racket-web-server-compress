@@ -2,6 +2,7 @@
 
 @(require scribble/manual
           (for-label web-server-compress
+                     web-server-compress/gzip
                      libbrotli
                      racket/base
                      racket/contract
@@ -18,18 +19,19 @@
 
 HTTP response compression middleware for the Racket
 @link["https://docs.racket-lang.org/web-server/"]{web server}. Supports
-Brotli and zstd compression, with priority-based encoding negotiation.
+Brotli, zstd, and gzip compression, with priority-based encoding negotiation.
 
 @section{Unified Compression}
 
 @defproc[(wrap-compress [handler (-> request? response?)]
-                        [#:encodings encodings (listof (or/c 'zstd 'br)) '(zstd br)]
+                        [#:encodings encodings (listof (or/c 'zstd 'br 'gzip)) '(zstd br gzip)]
                         [#:compress? compress? (-> response? boolean?)
                                      compressible-mime-type?]
                         [#:zstd-level zstd-level level/c 3]
                         [#:brotli-quality brotli-quality quality/c 5]
                         [#:brotli-window brotli-window window/c 22]
-                        [#:brotli-mode brotli-mode mode/c BROTLI_MODE_TEXT])
+                        [#:brotli-mode brotli-mode mode/c BROTLI_MODE_TEXT]
+                        [#:gzip-level gzip-level gzip-level/c 6])
          (-> request? response?)]{
 
 Wraps @racket[handler] to compress responses using the best available encoding.
@@ -37,7 +39,7 @@ The server iterates through @racket[encodings] in order and selects the first
 one the client accepts via @tt{Accept-Encoding}. If no encoding matches, the
 response passes through uncompressed.
 
-Supported encoding symbols: @racket['zstd] and @racket['br].
+Supported encoding symbols: @racket['zstd], @racket['br], and @racket['gzip].
 
 Compressed responses include @tt{Content-Encoding} and @tt{Vary: Accept-Encoding}
 headers.
@@ -53,10 +55,10 @@ default compresses text types and common structured formats (see below).
 (define (app req)
   (response/xexpr '(html (body "hello"))))
 
-(code:comment "Prefer zstd, fall back to brotli")
+(code:comment "Prefer zstd, fall back to brotli, then gzip")
 (serve
  #:dispatch (dispatch/servlet
-             (wrap-compress app #:encodings '(zstd br)))
+             (wrap-compress app #:encodings '(zstd br gzip)))
  #:port 8080)
 ]
 
@@ -144,6 +146,35 @@ streaming use cases like Server-Sent Events.
 @racketblock[
 (serve
  #:dispatch (dispatch/servlet (wrap-zstd-compress app #:level 6))
+ #:port 8080)
+]
+}
+
+@section{Gzip Compression}
+
+@defproc[(wrap-gzip-compress [handler (-> request? response?)]
+                             [#:level level gzip-level/c 6]
+                             [#:compress? compress? (-> response? boolean?)
+                                          compressible-mime-type?])
+         (-> request? response?)]{
+
+Wraps @racket[handler] to compress responses with gzip when the client
+sends @tt{Accept-Encoding: gzip} and the response is compressible. Compressed
+responses include @tt{Content-Encoding: gzip} and @tt{Vary: Accept-Encoding}
+headers.
+
+@racket[level] controls the gzip compression level (0--9). Higher values give
+better compression at the cost of speed. The default of 6 matches zlib's own
+default and is a good general-purpose setting.
+
+Gzip uses the system zlib library and requires no additional Racket package
+dependency.
+
+@racket[compress?] works identically to @racket[wrap-brotli-compress]'s predicate.
+
+@racketblock[
+(serve
+ #:dispatch (dispatch/servlet (wrap-gzip-compress app #:level 4))
  #:port 8080)
 ]
 }

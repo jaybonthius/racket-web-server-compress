@@ -16,8 +16,58 @@
 
 @defmodule[web-server-compress]
 
-Brotli compression middleware for the Racket
-@link["https://docs.racket-lang.org/web-server/"]{web server}.
+HTTP response compression middleware for the Racket
+@link["https://docs.racket-lang.org/web-server/"]{web server}. Supports
+Brotli and zstd compression, with priority-based encoding negotiation.
+
+@section{Unified Compression}
+
+@defproc[(wrap-compress [handler (-> request? response?)]
+                        [#:encodings encodings (listof (or/c 'zstd 'br)) '(zstd br)]
+                        [#:compress? compress? (-> response? boolean?)
+                                     compressible-mime-type?]
+                        [#:zstd-level zstd-level level/c 3]
+                        [#:brotli-quality brotli-quality quality/c 5]
+                        [#:brotli-window brotli-window window/c 22]
+                        [#:brotli-mode brotli-mode mode/c BROTLI_MODE_TEXT])
+         (-> request? response?)]{
+
+Wraps @racket[handler] to compress responses using the best available encoding.
+The server iterates through @racket[encodings] in order and selects the first
+one the client accepts via @tt{Accept-Encoding}. If no encoding matches, the
+response passes through uncompressed.
+
+Supported encoding symbols: @racket['zstd] and @racket['br].
+
+Compressed responses include @tt{Content-Encoding} and @tt{Vary: Accept-Encoding}
+headers.
+
+@racket[compress?] decides whether a given response should be compressed. The
+default compresses text types and common structured formats (see below).
+
+@racketblock[
+(require web-server-compress
+         web-server/servlet-dispatch
+         web-server/web-server)
+
+(define (app req)
+  (response/xexpr '(html (body "hello"))))
+
+(code:comment "Prefer zstd, fall back to brotli")
+(serve
+ #:dispatch (dispatch/servlet
+             (wrap-compress app #:encodings '(zstd br)))
+ #:port 8080)
+]
+
+To use only one encoding:
+
+@racketblock[
+(wrap-compress app #:encodings '(br) #:brotli-quality 9)
+]
+}
+
+@section{Brotli Compression}
 
 @defproc[(wrap-brotli-compress [handler (-> request? response?)]
                                [#:quality quality quality/c 5]
@@ -69,5 +119,31 @@ To override the default predicate, pass a custom @racket[compress?]:
 (wrap-brotli-compress app
   #:compress? (lambda (resp)
                 (equal? (response-mime resp) #"application/json")))
+]
+}
+
+@section{Zstd Compression}
+
+@defproc[(wrap-zstd-compress [handler (-> request? response?)]
+                             [#:level level level/c 3]
+                             [#:compress? compress? (-> response? boolean?)
+                                          compressible-mime-type?])
+         (-> request? response?)]{
+
+Wraps @racket[handler] to compress responses with zstd when the client
+sends @tt{Accept-Encoding: zstd} and the response is compressible. Compressed
+responses include @tt{Content-Encoding: zstd} and @tt{Vary: Accept-Encoding}
+headers.
+
+@racket[level] controls the zstd compression level. Higher values give better
+compression at the cost of speed. The default of 3 is a good balance for
+streaming use cases like Server-Sent Events.
+
+@racket[compress?] works identically to @racket[wrap-brotli-compress]'s predicate.
+
+@racketblock[
+(serve
+ #:dispatch (dispatch/servlet (wrap-zstd-compress app #:level 6))
+ #:port 8080)
 ]
 }

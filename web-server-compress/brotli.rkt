@@ -7,6 +7,7 @@
          "private/compressible.rkt")
 
 (provide (contract-out
+          [compressible-mime-type? (-> (or/c bytes? #f) boolean?)]
           [wrap-brotli-compress
            (->*
             [(-> request? response?)]
@@ -36,6 +37,7 @@
          (lambda (raw-out)
            (define out
              (open-brotli-output raw-out #:quality quality #:window window #:mode mode #:close? #f))
-           (original-output out)
-           (close-output-port out))])]
+           (dynamic-wind void
+                         (lambda () (original-output out))
+                         (lambda () (close-output-port out))))])]
       [else resp])))

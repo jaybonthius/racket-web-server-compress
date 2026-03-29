@@ -3,9 +3,9 @@
 
 (define collection "web-server-compress")
 
-(define version "0.1")
+(define version "0.2")
 
-(define deps '("base" "web-server-lib" "libbrotli"))
+(define deps '("base" "web-server-lib" "libbrotli" "libzstd"))
 
 (define build-deps '("rackunit-lib" "scribble-lib" "racket-doc" "web-server-doc"))
 

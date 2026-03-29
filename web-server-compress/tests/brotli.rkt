@@ -1,50 +1,14 @@
 #lang racket/base
 
 (require libbrotli
-         net/url
-         racket/promise
          racket/string
          rackunit
          web-server-compress/brotli
-         web-server/http/request-structs
-         web-server/http/response-structs)
-
-;; helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define (make-req accept-encoding)
-  (make-request #"GET"
-                (url "http" #f "localhost" 8080 #t (list (path/param "test" '())) '() #f)
-                (if accept-encoding
-                    (list (make-header #"Accept-Encoding" (string->bytes/utf-8 accept-encoding)))
-                    '())
-                (delay
-                  '())
-                #f
-                "127.0.0.1"
-                8080
-                "127.0.0.1"))
-
-(define (make-text-handler text)
-  (lambda (_req)
-    (response 200 #"OK" (current-seconds) #"text/plain" '() (lambda (out) (write-string text out)))))
-
-(define (make-handler-with-mime text mime)
-  (lambda (_req)
-    (response 200 #"OK" (current-seconds) mime '() (lambda (out) (write-string text out)))))
-
-(define (response-header-value resp name)
-  (for/or ([h (in-list (response-headers resp))])
-    (and (equal? (header-field h) name) (header-value h))))
-
-(define (collect-response-body resp)
-  (define out (open-output-bytes))
-  ((response-output resp) out)
-  (get-output-bytes out))
+         web-server/http/response-structs
+         "support/helpers.rkt")
 
 (define (collect-response-body/decompressed resp)
   (brotli-decompress (collect-response-body resp)))
-
-;; tests ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (module+ test
   (require rackunit/text-ui)
@@ -70,6 +34,11 @@
        (define handler (wrap-brotli-compress (make-text-handler "hello")))
        (define resp (handler (make-req "gzip;q=1.0, br;q=0.5")))
        (check-equal? (response-header-value resp #"Content-Encoding") #"br"))
+
+     (test-case "q=0 rejects encoding"
+       (define handler (wrap-brotli-compress (make-text-handler "hello")))
+       (define resp (handler (make-req "br;q=0, gzip")))
+       (check-false (response-header-value resp #"Content-Encoding")))
 
      (test-case "adds Vary: Accept-Encoding when compressed"
        (define handler (wrap-brotli-compress (make-text-handler "hello")))
@@ -117,8 +86,6 @@
        (check-true (string-contains? result "datastar-patch-signals"))
        (check-true (string-contains? result "<div>hello</div>"))
        (check-true (string-contains? result "{\"count\":1}")))
-
-     ;; mime-type filtering ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
      (test-case "compresses text/html responses"
        (define handler (wrap-brotli-compress (make-handler-with-mime "hello" #"text/html")))

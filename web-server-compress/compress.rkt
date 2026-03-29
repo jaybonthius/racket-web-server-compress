@@ -40,9 +40,21 @@
        (cond
          [(not selected) resp]
          [else
-          (compress-response resp selected zstd-level brotli-quality brotli-window brotli-mode gzip-level)])])))
+          (compress-response resp
+                             selected
+                             zstd-level
+                             brotli-quality
+                             brotli-window
+                             brotli-mode
+                             gzip-level)])])))
 
-(define (compress-response resp encoding zstd-level brotli-quality brotli-window brotli-mode gzip-level)
+(define (compress-response resp
+                           encoding
+                           zstd-level
+                           brotli-quality
+                           brotli-window
+                           brotli-mode
+                           gzip-level)
   (define original-output (response-output resp))
   (define-values (content-encoding wrap-output)
     (case encoding

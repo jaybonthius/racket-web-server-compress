@@ -10,8 +10,9 @@
          gzip-level/c)
 
 (define-runtime-path libz.so '(so "libz"))
-(define-ffi-definer define-z
-  (ffi-lib libz.so #:fail (lambda () (ffi-lib "zlib1" #:fail (lambda () (ffi-lib "libz"))))))
+(define-ffi-definer
+ define-z
+ (ffi-lib libz.so #:fail (lambda () (ffi-lib "zlib1" #:fail (lambda () (ffi-lib "libz"))))))
 
 ;; --- Constants ---
 
@@ -49,34 +50,29 @@
   s)
 
 (define (z-stream-set-input! strm ptr len)
-  (ptr-set! strm _pointer 'abs 0 ptr)       ;; next_in at byte offset 0
-  (ptr-set! strm _uint 'abs 8 len))         ;; avail_in at byte offset 8
+  (ptr-set! strm _pointer 'abs 0 ptr) ;; next_in at byte offset 0
+  (ptr-set! strm _uint 'abs 8 len)) ;; avail_in at byte offset 8
 
 (define (z-stream-avail-in strm)
-  (ptr-ref strm _uint 'abs 8))              ;; avail_in at byte offset 8
+  (ptr-ref strm _uint 'abs 8)) ;; avail_in at byte offset 8
 
 (define (z-stream-set-output! strm ptr len)
-  (ptr-set! strm _pointer 'abs 24 ptr)      ;; next_out at byte offset 24
-  (ptr-set! strm _uint 'abs 32 len))        ;; avail_out at byte offset 32
+  (ptr-set! strm _pointer 'abs 24 ptr) ;; next_out at byte offset 24
+  (ptr-set! strm _uint 'abs 32 len)) ;; avail_out at byte offset 32
 
 (define (z-stream-avail-out strm)
-  (ptr-ref strm _uint 'abs 32))             ;; avail_out at byte offset 32
+  (ptr-ref strm _uint 'abs 32)) ;; avail_out at byte offset 32
 
 ;; --- FFI bindings ---
 
 (define-z zlibVersion (_fun -> _string))
 
 ;; deflateInit2 is a C macro that expands to deflateInit2_ with version and struct size
-(define-z deflateInit2_
-  (_fun _pointer _int _int _int _int _int _string _int -> _int))
+(define-z deflateInit2_ (_fun _pointer _int _int _int _int _int _string _int -> _int))
 
-(define-z deflate_
-  (_fun _pointer _int -> _int)
-  #:c-id deflate)
+(define-z deflate_ (_fun _pointer _int -> _int) #:c-id deflate)
 
-(define-z deflateEnd_
-  (_fun _pointer -> _int)
-  #:c-id deflateEnd)
+(define-z deflateEnd_ (_fun _pointer -> _int) #:c-id deflateEnd)
 
 ;; --- Error checking ---
 
@@ -117,8 +113,14 @@
 (define (open-gzip-output out #:level [level 6] #:close? [close? #t] #:name [name 'gzip-output])
   (define strm (make-z-stream))
   (define ret
-    (deflateInit2_ strm level Z_DEFLATED GZIP_WINDOW_BITS DEFAULT_MEM_LEVEL
-                   Z_DEFAULT_STRATEGY (zlibVersion) z-stream-size))
+    (deflateInit2_ strm
+                   level
+                   Z_DEFLATED
+                   GZIP_WINDOW_BITS
+                   DEFAULT_MEM_LEVEL
+                   Z_DEFAULT_STRATEGY
+                   (zlibVersion)
+                   z-stream-size))
   (unless (= ret Z_OK)
     (error 'open-gzip-output "deflateInit2 failed with code ~a" ret))
 

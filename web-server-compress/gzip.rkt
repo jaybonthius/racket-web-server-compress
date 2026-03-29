@@ -1,8 +1,8 @@
 #lang racket/base
 
-(require racket/contract/base
+(require libz
+         racket/contract/base
          web-server/http
-         "private/gzip-ffi.rkt"
          "private/accept-encoding.rkt"
          "private/compressible.rkt")
 

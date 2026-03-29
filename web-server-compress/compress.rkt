@@ -1,10 +1,10 @@
 #lang racket/base
 
 (require libbrotli
+         libz
          racket/contract/base
          web-server/http
          "private/zstd-ffi.rkt"
-         "private/gzip-ffi.rkt"
          "private/accept-encoding.rkt"
          "private/compressible.rkt")
 

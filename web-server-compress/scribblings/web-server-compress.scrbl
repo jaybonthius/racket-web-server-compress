@@ -3,6 +3,7 @@
 @(require scribble/manual
           (for-label web-server-compress
                      libbrotli
+                     libz
                      racket/base
                      racket/contract
                      web-server/http/request-structs
@@ -184,8 +185,8 @@ headers.
 better compression at the cost of speed. The default of 6 matches zlib's own
 default and is a good general-purpose setting.
 
-Gzip uses the system zlib library and requires no additional Racket package
-dependency.
+Gzip compression is provided by the @racketmodname[libz] package, which
+bundles platform-specific zlib shared libraries.
 
 @racket[compress?] works identically to @racket[wrap-brotli-compress]'s predicate.
 

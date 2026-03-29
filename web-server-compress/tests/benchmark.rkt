@@ -1,19 +1,12 @@
 #lang racket/base
 
 (require libbrotli
+         libz
          racket/format
          racket/string
-         web-server-compress/private/gzip-ffi
          "support/zstd.rkt")
 
 ;; benchmark: compare zstd vs brotli vs gzip compression on representative payloads
-
-(define (gzip-compress-with-level p level)
-  (define out (open-output-bytes))
-  (define gzout (open-gzip-output out #:level level #:close? #f))
-  (write-bytes p gzout)
-  (close-output-port gzout)
-  (get-output-bytes out))
 
 (define (make-json-payload n)
   (string->bytes/utf-8
@@ -92,9 +85,9 @@
     (benchmark-compress "brotli quality 1" (lambda (p) (brotli-compress p 1)) payload iters)
     (benchmark-compress "brotli quality 5" (lambda (p) (brotli-compress p 5)) payload iters)
     (benchmark-compress "brotli quality 9" (lambda (p) (brotli-compress p 9)) payload iters)
-    (benchmark-compress "gzip level 1" (lambda (p) (gzip-compress-with-level p 1)) payload iters)
-    (benchmark-compress "gzip level 6" (lambda (p) (gzip-compress-with-level p 6)) payload iters)
-    (benchmark-compress "gzip level 9" (lambda (p) (gzip-compress-with-level p 9)) payload iters)
+    (benchmark-compress "gzip level 1" (lambda (p) (gzip-compress p 1)) payload iters)
+    (benchmark-compress "gzip level 6" (lambda (p) (gzip-compress p 6)) payload iters)
+    (benchmark-compress "gzip level 9" (lambda (p) (gzip-compress p 9)) payload iters)
     (newline)))
 
 (module+ main

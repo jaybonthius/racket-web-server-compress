@@ -5,7 +5,7 @@
 
 (define version "0.3")
 
-(define deps '("base" "web-server-lib" "libbrotli" "libzstd"))
+(define deps '("base" "web-server-lib" "libbrotli" "libzstd" "libz"))
 
 (define build-deps '("rackunit-lib" "scribble-lib" "racket-doc" "web-server-doc"))
 

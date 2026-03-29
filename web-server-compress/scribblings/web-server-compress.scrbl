@@ -2,7 +2,6 @@
 
 @(require scribble/manual
           (for-label web-server-compress
-                     web-server-compress/gzip
                      libbrotli
                      racket/base
                      racket/contract
@@ -22,6 +21,16 @@ HTTP response compression middleware for the Racket
 Brotli, zstd, and gzip compression, with priority-based encoding negotiation.
 
 @section{Unified Compression}
+
+@defthing[compressible-mime-type? (-> (or/c bytes? #f) boolean?)]{
+Predicate that returns @racket[#t] for MIME types that benefit from compression:
+all @tt{text/*} types, plus @tt{application/json}, @tt{application/javascript},
+@tt{application/xml}, @tt{application/xhtml+xml}, @tt{application/wasm},
+@tt{application/ld+json}, @tt{application/graphql+json}, @tt{application/geo+json},
+@tt{application/manifest+json}, @tt{application/rss+xml}, @tt{application/atom+xml},
+and @tt{image/svg+xml}. Returns @racket[#t] when the MIME type is @racket[#f]
+(no Content-Type header). Already-compact formats like JPEG, PNG, and ZIP return
+@racket[#f].}
 
 @defproc[(wrap-compress [handler (-> request? response?)]
                         [#:encodings encodings (listof (or/c 'zstd 'br 'gzip)) '(zstd br gzip)]
@@ -126,6 +135,10 @@ To override the default predicate, pass a custom @racket[compress?]:
 
 @section{Zstd Compression}
 
+@defthing[level/c flat-contract?]{
+Contract for zstd compression levels. Accepts integers in the range supported
+by the linked libzstd (typically @racket[-131072] to @racket[22]).}
+
 @defproc[(wrap-zstd-compress [handler (-> request? response?)]
                              [#:level level level/c 3]
                              [#:compress? compress? (-> response? boolean?)
@@ -151,6 +164,10 @@ streaming use cases like Server-Sent Events.
 }
 
 @section{Gzip Compression}
+
+@defthing[gzip-level/c flat-contract?]{
+Contract for gzip compression levels. Accepts integers from @racket[0]
+(no compression) to @racket[9] (best compression).}
 
 @defproc[(wrap-gzip-compress [handler (-> request? response?)]
                              [#:level level gzip-level/c 6]
